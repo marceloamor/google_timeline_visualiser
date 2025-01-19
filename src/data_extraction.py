@@ -20,7 +20,7 @@ GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 
 # Read in data 
 try:
-    with open('Timeline.json', 'r') as f:
+    with open('data/Timeline.json', 'r') as f:
         raw_data = json.load(f)  # Load as regular JSON first
     # Extract semanticSegments array
     segments = raw_data.get('semanticSegments', [])
@@ -116,7 +116,7 @@ for i, place in enumerate(place_data):
         
         # Save progress every 100 places
         if len(detailed_places) % 100 == 0:
-            with open('detailed_places_full.json', 'w') as f:
+            with open('data/detailed_places_full.json', 'w') as f:
                 json.dump({
                     'metadata': {
                         'total_places_processed': len(detailed_places),
@@ -129,7 +129,7 @@ for i, place in enumerate(place_data):
             ic(f"Progress saved: {len(detailed_places)} places processed")
 
 # Final save
-with open('detailed_places_full.json', 'w') as f:
+with open('data/detailed_places_full.json', 'w') as f:
     json.dump({
         'metadata': {
             'total_places_processed': len(detailed_places),
@@ -144,7 +144,7 @@ with open('detailed_places_full.json', 'w') as f:
 print(f"\nProcessing complete!")
 print(f"Total places processed: {len(detailed_places)}")
 print(f"Total cost: ${(request_count * COST_PER_REQUEST):.2f}")
-print(f"Data saved to 'detailed_places_full.json'")
+print(f"Data saved to 'data/detailed_places_full.json'")
 
 # Create a summary of the data we've collected
 if detailed_places:
@@ -161,7 +161,7 @@ if detailed_places:
             price_levels.update([details['price_level']])
 
     # Save summary statistics
-    with open('place_statistics.json', 'w') as f:
+    with open('data/place_statistics.json', 'w') as f:
         json.dump({
             'common_types': dict(place_types.most_common(20)),
             'rating_stats': {
@@ -172,4 +172,4 @@ if detailed_places:
             'price_level_distribution': dict(price_levels)
         }, f, indent=2)
 
-    ic("Statistics saved to 'place_statistics.json'")
+    ic("Statistics saved to 'data/place_statistics.json'")

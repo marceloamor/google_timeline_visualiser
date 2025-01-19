@@ -37,9 +37,13 @@ filtered_data = {
     'places': [filter_place_details(place) for place in data['places']]
 }
 
-# Save filtered data for GitHub
+# Save filtered data for local use
+with open('data/detailed_places.json', 'w') as f:
+    json.dump(filtered_data, f, indent=2)
+
+# Save GitHub-friendly version
 with open('data/github_places.json', 'w') as f:
-    json.dump(filtered_data, f)  # Remove indent to reduce size further
+    json.dump(filtered_data, f)
 
 # Print file sizes for comparison
 original_size = os.path.getsize('data/detailed_places_full.json') / (1024 * 1024)  # Convert to MB
