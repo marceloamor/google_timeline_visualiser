@@ -3,7 +3,7 @@
 A data analysis project that processes and visualizes location data from Google Timeline, providing insights into spatial patterns and place categories.
 
 ## Project Structure 
-├── data/ # Data files
+├── data/ 
 │ ├── github_places.json # Filtered dataset for analysis
 │ └── [other data files] # Local only, not in repository
 ├── output/ # Generated visualizations and analysis
