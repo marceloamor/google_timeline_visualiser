@@ -9,6 +9,14 @@ from googlemaps import Client
 import collections
 import time
 from datetime import datetime
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Get API key from environment variable
+GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 
 # Read in data 
 try:
@@ -51,8 +59,7 @@ ic(f"Found {len(place_data)} places with IDs")
 if place_data:
     ic(place_data[0])  # Show example of what we extracted
 
-# Initialize Google Maps client (you'll need an API key)
-GOOGLE_API_KEY = 'AIzaSyAQNGxAc8pqyJlwZ2I6K0guSkTa2CQJKIA'  # Replace with your actual API key
+# Initialize Google Maps client
 gmaps = Client(key=GOOGLE_API_KEY)
 
 # Constants
