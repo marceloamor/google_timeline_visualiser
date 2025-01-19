@@ -1,0 +1,24 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Large data files
+detailed_places_full.json
+detailed_places.json
+data/detailed_places_full.json
+data/detailed_places.json
+data/Timeline.json
+data/'Timeline Edits.json'
+github_places.json
+data/github_places.json
+
+# IDE
+.vscode/
+.idea/
+
+# Generated files
+*.html
+output/*
+!output/.gitkeep
