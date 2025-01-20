@@ -86,3 +86,100 @@ This project handles personal location data. The repository only contains filter
 
 - Google Places API for location data
 - [Add other acknowledgments as needed]
+
+
+
+
+# Google Timeline Analysis
+
+A Python project to analyze and visualize Google Timeline data, providing insights into location history, movement patterns, and temporal trends.
+
+## Setup
+
+1. Clone this repository and place your `Timeline.json` file in the `data/` directory.
+
+2. Initialize Poetry with your Python path:
+```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
+## Project Structure
+
+- `src/`
+  - `data_extraction.py` - Extracts and structures Timeline data (visits and activities)
+  - `temporal_analysis.py` - Analyzes temporal patterns in visits and movements
+  - `geoanalysis.py` - Creates interactive maps and location-based visualizations
+
+- `data/`
+  - `Timeline.json` - Raw Google Timeline data
+  - `extracted_timeline.json` - Processed timeline data
+
+- `output/`
+  - `temporal_patterns.png` - Visualizations of temporal patterns
+  - `temporal_statistics.json` - Statistical analysis of temporal data
+  - `location_analysis.html` - Interactive map visualization
+  - `location_statistics.json` - Statistical analysis of locations
+
+## Current Features
+
+- Data Processing:
+  - Extraction of both visit and activity data
+  - Proper handling of timestamps and timezones
+  - Structured JSON output
+
+- Temporal Analysis:
+  - Visit duration patterns
+  - Activity timing analysis
+  - Daily and weekly patterns
+  - Time-based statistics
+
+- Geographic Analysis:
+  - Interactive map visualization
+  - Visit locations with type information
+  - Movement paths between locations
+  - Location heatmap
+  - Geographic statistics
+
+## Future Plans
+
+1. Enhanced Analysis:
+   - Movement pattern analysis
+   - Frequent route detection
+   - Place categorization
+   - Time spent analysis
+
+2. Web Application:
+   - Interactive dashboard
+   - Data filtering options
+   - Customizable visualizations
+   - Timeline playback feature
+
+3. Additional Features:
+   - Export capabilities
+   - Custom location tagging
+   - Pattern detection
+   - Statistical reporting
+
+## Usage
+
+1. Extract and process data:
+```bash
+python src/data_extraction.py
+```
+
+2. Run temporal analysis:
+```bash
+python src/temporal_analysis.py
+```
+
+3. Generate location visualizations:
+```bash
+python src/geoanalysis.py
+```
+
+
+## Dependencies
+
+- Python 3.x
+- Poetry for dependency management
+- Required packages listed in pyproject.toml

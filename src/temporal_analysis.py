@@ -1,93 +1,108 @@
 import json
 import pandas as pd
 import matplotlib.pyplot as plt
-from datetime import datetime
 import seaborn as sns
+from datetime import datetime
 from icecream import ic
 
 def load_data():
-    with open('data/github_places_temporal.json', 'r') as f:
+    """Load the extracted timeline data"""
+    with open('data/extracted_timeline.json', 'r') as f:
         return json.load(f)
 
-def analyze_time_patterns():
+def analyze_temporal_patterns():
+    """Analyze temporal patterns in visits and activities"""
     data = load_data()
-    places = data['places']
     
-    # Debug: Print the structure of the first place
-    ic("First place structure:", places[0])
+    # Convert visits to DataFrame with proper timezone handling
+    visits_df = pd.DataFrame(data['visits'])
+    visits_df['start_time'] = pd.to_datetime(visits_df['start_time'], utc=True)
+    visits_df['end_time'] = pd.to_datetime(visits_df['end_time'], utc=True)
     
-    # Convert timestamps to datetime objects
-    visits = []
-    for place in places:
-        # Debug: Print available keys
-        ic("Available keys in place:", place.keys())
-        ic("Available keys in original_data:", place.get('original_data', {}).keys())
-        
-        if 'original_data' in place:
-            timestamp = place['original_data'].get('timestamp')
-            if timestamp:
-                visits.append({
-                    'time': datetime.fromtimestamp(timestamp),
-                    'name': place['google_details'].get('name'),
-                    'types': place['google_details'].get('types', [])
-                })
+    # Convert to local time using timezone offset
+    visits_df['timezone_offset'] = pd.to_numeric(visits_df['timezone_offset'], errors='coerce')
+    visits_df['start_time_local'] = visits_df['start_time'] + pd.to_timedelta(visits_df['timezone_offset'], unit='m')
+    visits_df['end_time_local'] = visits_df['end_time'] + pd.to_timedelta(visits_df['timezone_offset'], unit='m')
+    visits_df['duration_hours'] = (visits_df['end_time'] - visits_df['start_time']).dt.total_seconds() / 3600
     
-    # Debug: Print number of visits found
-    ic("Number of visits with timestamps:", len(visits))
+    # Convert activities to DataFrame
+    activities_df = pd.DataFrame(data['activities'])
+    activities_df['start_time'] = pd.to_datetime(activities_df['start_time'], utc=True)
+    activities_df['end_time'] = pd.to_datetime(activities_df['end_time'], utc=True)
     
-    if not visits:
-        ic("No timestamp data found in the filtered dataset!")
-        return
-        
-    df = pd.DataFrame(visits)
-    
-    # Add time-based columns
-    df['hour'] = df['time'].dt.hour
-    df['day'] = df['time'].dt.day_name()
-    df['month'] = df['time'].dt.month_name()
+    # Convert activities to local time
+    activities_df['timezone_offset'] = pd.to_numeric(activities_df['timezone_offset'], errors='coerce')
+    activities_df['start_time_local'] = activities_df['start_time'] + pd.to_timedelta(activities_df['timezone_offset'], unit='m')
+    activities_df['end_time_local'] = activities_df['end_time'] + pd.to_timedelta(activities_df['timezone_offset'], unit='m')
+    activities_df['duration_minutes'] = (activities_df['end_time'] - activities_df['start_time']).dt.total_seconds() / 60
     
     # Create visualizations
-    plt.figure(figsize=(15, 10))
+    fig = plt.figure(figsize=(20, 15))
     
-    # Hourly distribution
-    plt.subplot(2, 2, 1)
-    sns.histplot(data=df, x='hour', bins=24)
-    plt.title('Visits by Hour of Day')
+    # 1. Visit durations by semantic type
+    plt.subplot(3, 2, 1)
+    sns.boxplot(data=visits_df, x='semantic_type', y='duration_hours')
+    plt.xticks(rotation=45)
+    plt.title('Visit Durations by Type')
     
-    # Daily distribution
-    plt.subplot(2, 2, 2)
+    # 2. Activity durations by type
+    plt.subplot(3, 2, 2)
+    sns.boxplot(data=activities_df, x='type', y='duration_minutes')
+    plt.xticks(rotation=45)
+    plt.title('Activity Durations by Type')
+    
+    # 3. Visits by hour of day (local time)
+    plt.subplot(3, 2, 3)
+    visits_df['hour'] = visits_df['start_time_local'].dt.hour
+    sns.histplot(data=visits_df, x='hour', bins=24)
+    plt.title('Visits by Hour of Day (Local Time)')
+    
+    # 4. Activities by hour of day (local time)
+    plt.subplot(3, 2, 4)
+    activities_df['hour'] = activities_df['start_time_local'].dt.hour
+    sns.histplot(data=activities_df, x='hour', bins=24)
+    plt.title('Activities by Hour of Day (Local Time)')
+    
+    # 5. Visit counts by day of week
+    plt.subplot(3, 2, 5)
+    visits_df['day'] = visits_df['start_time_local'].dt.day_name()
     day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    sns.countplot(data=df, x='day', order=day_order)
+    sns.countplot(data=visits_df, x='day', order=day_order)
     plt.xticks(rotation=45)
     plt.title('Visits by Day of Week')
     
-    # Monthly distribution
-    plt.subplot(2, 2, 3)
-    month_order = ['January', 'February', 'March', 'April', 'May', 'June', 
-                  'July', 'August', 'September', 'October', 'November', 'December']
-    sns.countplot(data=df, x='month', order=month_order)
+    # 6. Activity types distribution
+    plt.subplot(3, 2, 6)
+    sns.countplot(data=activities_df, x='type')
     plt.xticks(rotation=45)
-    plt.title('Visits by Month')
+    plt.title('Activity Types Distribution')
     
     plt.tight_layout()
     plt.savefig('output/temporal_patterns.png')
-    ic("Temporal analysis plots saved to 'output/temporal_patterns.png'")
+    ic("Saved temporal analysis plots to 'output/temporal_patterns.png'")
     
-    # Save statistics
+    # Generate statistics
     stats = {
-        'busiest_hour': int(df['hour'].mode()[0]),
-        'busiest_day': df['day'].mode()[0],
-        'busiest_month': df['month'].mode()[0],
-        'total_visits': len(df),
-        'date_range': {
-            'start': df['time'].min().strftime('%Y-%m-%d'),
-            'end': df['time'].max().strftime('%Y-%m-%d')
+        'visits': {
+            'total_count': len(visits_df),
+            'average_duration_hours': float(visits_df['duration_hours'].mean()),
+            'most_common_type': visits_df['semantic_type'].mode().iloc[0],
+            'date_range': {
+                'start': visits_df['start_time_local'].min().isoformat(),
+                'end': visits_df['end_time_local'].max().isoformat()
+            }
+        },
+        'activities': {
+            'total_count': len(activities_df),
+            'average_duration_minutes': float(activities_df['duration_minutes'].mean()),
+            'most_common_type': activities_df['type'].mode().iloc[0],
+            'total_distance_km': float(activities_df['distance_meters'].sum() / 1000)
         }
     }
     
     with open('output/temporal_statistics.json', 'w') as f:
         json.dump(stats, f, indent=2)
-    ic("Temporal statistics saved to 'output/temporal_statistics.json'")
+    ic("Saved temporal statistics to 'output/temporal_statistics.json'")
 
 if __name__ == "__main__":
-    analyze_time_patterns() 
+    analyze_temporal_patterns() 

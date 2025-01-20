@@ -1,120 +1,125 @@
 import json
 import numpy as np
-from sklearn.cluster import DBSCAN
 import folium
+from folium import plugins
 import matplotlib.pyplot as plt
 from collections import Counter
 from icecream import ic
 
-# Load the filtered data
-with open('data/github_places.json', 'r') as f:
-    data = json.load(f)
-    places = data['places']
+def load_data():
+    """Load the extracted timeline data"""
+    with open('data/extracted_timeline.json', 'r') as f:
+        return json.load(f)
 
-# Extract coordinates and metadata
-locations = []
-place_info = []
+def parse_latlng(latlng_str):
+    """Parse latitude and longitude from string format"""
+    if not latlng_str:
+        return None
+    # Remove degree symbols and split
+    clean_str = latlng_str.replace('°', '')
+    lat, lng = map(float, clean_str.split(', '))
+    return [lat, lng]
 
-# Print first place data for debugging
-ic("First place in data:", places[0])
-
-for place in places:
-    try:
-        details = place['google_details']
-        geometry = details.get('geometry', {})
-        location = geometry.get('location', {})
-        
-        if location and 'lat' in location and 'lng' in location:
-            locations.append([location['lat'], location['lng']])
-            place_info.append({
-                'name': details.get('name', 'Unknown'),
-                'types': details.get('types', []),
-                'rating': details.get('rating'),
-                'address': details.get('formatted_address')
+def analyze_locations():
+    """Analyze and visualize location patterns"""
+    data = load_data()
+    visits = data['visits']
+    activities = data['activities']
+    
+    # Process visit locations
+    visit_locations = []
+    visit_info = []
+    
+    for visit in visits:
+        location = parse_latlng(visit.get('location'))
+        if location:
+            visit_locations.append(location)
+            visit_info.append({
+                'type': visit.get('semantic_type'),
+                'start_time': visit.get('start_time'),
+                'duration_str': f"{visit.get('end_time')} - {visit.get('start_time')}",
+                'probability': visit.get('probability')
             })
-    except KeyError as e:
-        ic(f"Error processing place: {e}")
-
-# Convert to numpy array for clustering
-X = np.array(locations)
-
-# Perform DBSCAN clustering
-eps_km = 1.0  # 1km cluster radius
-eps = eps_km / 111.32  # Convert km to degrees (approximate)
-db = DBSCAN(eps=eps, min_samples=5).fit(X)
-
-# Get cluster labels
-labels = db.labels_
-
-# Count number of clusters (excluding noise points labeled as -1)
-n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
-ic(f"Number of clusters: {n_clusters}")
-
-# Create a map centered on the mean coordinates
-center_lat = np.mean(X[:, 0])
-center_lng = np.mean(X[:, 1])
-m = folium.Map(location=[center_lat, center_lng], zoom_start=10)
-
-# Create a color map for clusters
-colors = plt.cm.rainbow(np.linspace(0, 1, n_clusters))
-color_map = {i: '#%02x%02x%02x' % tuple(int(255*j) for j in c[:3]) 
-            for i, c in enumerate(colors)}
-color_map[-1] = '#808080'  # Gray for noise points
-
-# Add points to map with cluster colors
-for idx, (point, label, info) in enumerate(zip(X, labels, place_info)):
-    color = color_map[label]
     
-    # Create popup content
-    popup_content = f"""
-    <b>{info['name']}</b><br>
-    Types: {', '.join(info['types'][:3])}<br>
-    Rating: {info['rating']}<br>
-    Address: {info['address']}<br>
-    Cluster: {'Noise' if label == -1 else label}
-    """
+    # Convert to numpy array for clustering
+    X = np.array(visit_locations)
     
-    folium.CircleMarker(
-        location=point,
-        radius=8,
-        popup=popup_content,
-        color=color,
-        fill=True,
-        fill_color=color
-    ).add_to(m)
-
-# Save the map
-m.save('output/location_clusters.html')
-ic("Map saved as 'output/location_clusters.html'")
-
-# Analyze clusters
-cluster_stats = {}
-for label in set(labels):
-    if label != -1:  # Exclude noise points
-        cluster_points = X[labels == label]
-        cluster_info = [info for i, info in enumerate(place_info) if labels[i] == label]
+    # Create a map centered on the mean coordinates
+    center_lat = np.mean(X[:, 0])
+    center_lng = np.mean(X[:, 1])
+    m = folium.Map(location=[center_lat, center_lng], zoom_start=11)
+    
+    # Add visit markers
+    for location, info in zip(visit_locations, visit_info):
+        color = 'red' if info['type'] == 'INFERRED_HOME' else 'blue'
         
-        # Get most common place types in cluster
-        all_types = [type for place in cluster_info for type in place['types']]
-        common_types = Counter(all_types).most_common(3)
+        popup_content = f"""
+        Type: {info['type']}<br>
+        Time: {info['duration_str']}<br>
+        Probability: {info['probability']:.2f}
+        """
         
-        # Handle empty ratings more gracefully
-        valid_ratings = [p['rating'] for p in cluster_info if p['rating'] is not None]
-        avg_rating = float(np.mean(valid_ratings)) if valid_ratings else None
+        folium.CircleMarker(
+            location=location,
+            radius=8,
+            popup=popup_content,
+            color=color,
+            fill=True,
+            fill_color=color
+        ).add_to(m)
+    
+    # Add activity paths
+    activity_coordinates = []
+    
+    for activity in activities:
+        start = parse_latlng(activity.get('start_location'))
+        end = parse_latlng(activity.get('end_location'))
         
-        cluster_stats[str(label)] = {  # Convert label to string for JSON
-            'size': int(len(cluster_points)),  # Convert numpy.int64 to regular int
-            'center': [float(x) for x in cluster_points.mean(axis=0)],  # Convert to regular float
-            'common_types': common_types,
-            'avg_rating': avg_rating
+        if start and end:
+            activity_coordinates.append([start, end])
+            
+            # Draw path line
+            folium.PolyLine(
+                locations=[start, end],
+                weight=2,
+                color='green',
+                opacity=0.8,
+                popup=f"Type: {activity.get('type')}<br>Distance: {activity.get('distance_meters')}m"
+            ).add_to(m)
+    
+    # Add heatmap layer
+    heat_data = [[lat, lng] for lat, lng in visit_locations]
+    plugins.HeatMap(heat_data).add_to(m)
+    
+    # Save the map
+    m.save('output/location_analysis.html')
+    ic("Map saved as 'output/location_analysis.html'")
+    
+    # Generate statistics
+    visit_types = Counter(visit['semantic_type'] for visit in visits)
+    activity_types = Counter(activity['type'] for activity in activities)
+    
+    stats = {
+        'visits': {
+            'total_locations': len(visit_locations),
+            'unique_types': dict(visit_types),
+            'bounds': {
+                'north': float(np.max(X[:, 0])),
+                'south': float(np.min(X[:, 0])),
+                'east': float(np.max(X[:, 1])),
+                'west': float(np.min(X[:, 1]))
+            }
+        },
+        'activities': {
+            'total_movements': len(activity_coordinates),
+            'activity_types': dict(activity_types),
+            'total_distance_km': sum(float(a.get('distance_meters', 0)) for a in activities) / 1000
         }
+    }
+    
+    with open('output/location_statistics.json', 'w') as f:
+        json.dump(stats, f, indent=2)
+    ic("Location statistics saved to 'output/location_statistics.json'")
 
-# Save cluster statistics
-with open('output/cluster_statistics.json', 'w') as f:
-    json.dump({
-        'total_clusters': int(n_clusters),  # Convert numpy.int64 to regular int
-        'noise_points': int(list(labels).count(-1)),
-        'cluster_stats': cluster_stats
-    }, f, indent=2)
-
-ic("Cluster statistics saved to 'output/cluster_statistics.json'")
+if __name__ == "__main__":
+    analyze_locations()
