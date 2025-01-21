@@ -1,0 +1,17 @@
+{
+  "visits": {
+    "total_count": 12559,
+    "average_duration_hours": 5.057126031796587,
+    "most_common_type": "UNKNOWN",
+    "date_range": {
+      "start": "2016-02-27T11:58:12+00:00",
+      "end": "2025-01-19T13:26:40+00:00"
+    }
+  },
+  "activities": {
+    "total_count": 12940,
+    "average_duration_minutes": 49.753284389489956,
+    "most_common_type": "WALKING",
+    "total_distance_km": 494074.87503051053
+  }
+}

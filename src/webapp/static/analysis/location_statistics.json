@@ -1,0 +1,41 @@
+{
+  "visits": {
+    "total_locations": 12559,
+    "unique_types": {
+      "SEARCHED_ADDRESS": 1092,
+      "UNKNOWN": 8847,
+      "INFERRED_HOME": 837,
+      "INFERRED_WORK": 280,
+      "HOME": 1037,
+      "WORK": 461,
+      "ALIASED_LOCATION": 5
+    },
+    "bounds": {
+      "north": 60.3210416,
+      "south": -23.6273246,
+      "east": 140.3928501,
+      "west": -122.3789554
+    }
+  },
+  "activities": {
+    "total_movements": 12940,
+    "activity_types": {
+      "IN_PASSENGER_VEHICLE": 3485,
+      "WALKING": 5795,
+      "CYCLING": 1188,
+      "FLYING": 133,
+      "UNKNOWN_ACTIVITY_TYPE": 148,
+      "IN_BUS": 488,
+      "IN_SUBWAY": 1092,
+      "IN_TRAIN": 379,
+      "IN_TRAM": 100,
+      "IN_VEHICLE": 12,
+      "MOTORCYCLING": 78,
+      "RUNNING": 2,
+      "SKIING": 20,
+      "BOATING": 2,
+      "IN_FERRY": 18
+    },
+    "total_distance_km": 494074.87503051053
+  }
+}

@@ -28,6 +28,10 @@ def update_analysis_files():
                 os.path.join(app.static_folder, 'analysis/location_analysis.html'))
     shutil.copy('output/temporal_patterns.png',
                 os.path.join(app.static_folder, 'analysis/temporal_patterns.png'))
+    shutil.copy('output/location_statistics.json',
+                os.path.join(app.static_folder, 'analysis/location_statistics.json'))
+    shutil.copy('output/temporal_statistics.json',
+                os.path.join(app.static_folder, 'analysis/temporal_statistics.json'))
 
 @app.route('/')
 def index():
@@ -37,7 +41,17 @@ def index():
 @app.route('/map')
 def map_view():
     update_analysis_files()
-    return render_template('map.html')
+    # Read the map HTML directly
+    map_path = os.path.join(app.static_folder, 'analysis/location_analysis.html')
+    try:
+        with open(map_path, 'r') as f:
+            map_content = f.read()
+            print(f"Successfully read map file. Content length: {len(map_content)}")
+    except Exception as e:
+        print(f"Error reading map file: {e}")
+        map_content = ""
+    
+    return render_template('map.html', map_content=map_content)
 
 @app.route('/temporal')
 def temporal_view():
