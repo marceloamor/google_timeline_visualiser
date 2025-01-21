@@ -1,6 +1,7 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import os
 import sys
+import shutil
 
 # Add parent directory to path to access existing modules
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -11,20 +12,41 @@ from geoanalysis import analyze_locations
 
 app = Flask(__name__)
 
+# Ensure static directories exist
+os.makedirs(os.path.join(app.static_folder, 'analysis'), exist_ok=True)
+
+def update_analysis_files():
+    """Run analysis and copy output files to static folder"""
+    # Run analysis if needed
+    if not os.path.exists('output/location_analysis.html'):
+        extract_timeline_data()
+        analyze_temporal_patterns()
+        analyze_locations()
+    
+    # Copy analysis files to static folder
+    shutil.copy('output/location_analysis.html', 
+                os.path.join(app.static_folder, 'analysis/location_analysis.html'))
+    shutil.copy('output/temporal_patterns.png',
+                os.path.join(app.static_folder, 'analysis/temporal_patterns.png'))
+
 @app.route('/')
 def index():
+    update_analysis_files()
     return render_template('index.html')
 
 @app.route('/map')
 def map_view():
+    update_analysis_files()
     return render_template('map.html')
 
 @app.route('/temporal')
 def temporal_view():
+    update_analysis_files()
     return render_template('temporal.html')
 
 @app.route('/statistics')
 def statistics_view():
+    update_analysis_files()
     return render_template('statistics.html')
 
 @app.route('/api/process-timeline', methods=['POST'])
