@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 import os
 import sys
 import shutil
+from bs4 import BeautifulSoup  # You might need to: poetry add beautifulsoup4
 
 # Add parent directory to path to access existing modules
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -41,17 +42,50 @@ def index():
 @app.route('/map')
 def map_view():
     update_analysis_files()
-    # Read the map HTML directly
     map_path = os.path.join(app.static_folder, 'analysis/location_analysis.html')
     try:
         with open(map_path, 'r') as f:
-            map_content = f.read()
-            print(f"Successfully read map file. Content length: {len(map_content)}")
+            content = f.read()
+            soup = BeautifulSoup(content, 'html.parser')
+            
+            # Get all CSS and JS from head
+            head = soup.find('head')
+            css_links = [str(link) for link in head.find_all('link')] if head else []
+            head_scripts = [str(script) for script in head.find_all('script')] if head else []
+            
+            # Extract the initialization scripts
+            init_script = soup.find('script', string=lambda t: t and 'L_NO_TOUCH = false;' in t)
+            map_script = soup.find('script', string=lambda t: t and 'var map_' in t)
+            
+            # Get the map ID from the script
+            map_id = None
+            if map_script and 'var map_' in map_script.string:
+                map_id = map_script.string.split('var map_')[1].split('=')[0].strip()
+                print(f"Found map ID: {map_id}")
+            
+            # Combine scripts
+            combined_script = ""
+            if init_script:
+                combined_script += init_script.string + "\n"
+            if map_script:
+                combined_script += map_script.string
+            
+            # Create div with correct ID
+            map_div = f"<div id='map_{map_id}' style='height: 80vh;'></div>" if map_id else "<div id='map'></div>"
+            
+            return render_template('map.html', 
+                                map_div=map_div,
+                                map_script=combined_script,
+                                css_links=css_links,
+                                head_scripts=head_scripts)
+                
     except Exception as e:
-        print(f"Error reading map file: {e}")
-        map_content = ""
-    
-    return render_template('map.html', map_content=map_content)
+        print(f"Error processing map file: {e}")
+        return render_template('map.html', 
+                             map_div="<div id='map'></div>",
+                             map_script="",
+                             css_links=[],
+                             head_scripts=[])
 
 @app.route('/temporal')
 def temporal_view():
