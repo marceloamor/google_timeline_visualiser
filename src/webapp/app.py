@@ -2,7 +2,10 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 import os
 import sys
 import shutil
-from bs4 import BeautifulSoup  # You might need to: poetry add beautifulsoup4
+from bs4 import BeautifulSoup
+import folium
+import re
+import traceback
 
 # Add parent directory to path to access existing modules
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -42,50 +45,52 @@ def index():
 @app.route('/map')
 def map_view():
     update_analysis_files()
+    
+    # Create a new map instance
+    m = folium.Map(location=[0, 0], zoom_start=2)
+    
+    # Read the original map file to get the layers
     map_path = os.path.join(app.static_folder, 'analysis/location_analysis.html')
     try:
         with open(map_path, 'r') as f:
             content = f.read()
             soup = BeautifulSoup(content, 'html.parser')
             
-            # Get all CSS and JS from head
-            head = soup.find('head')
-            css_links = [str(link) for link in head.find_all('link')] if head else []
-            head_scripts = [str(script) for script in head.find_all('script')] if head else []
+            # Extract marker data instead of scripts
+            markers = []
+            scripts = soup.find_all('script')
+            for script in scripts:
+                if not script.string:
+                    continue
+                    
+                if 'circle_marker_' in script.string:
+                    # Extract marker data using regex
+                    coords_match = re.search(r'L\.circleMarker\(\s*\[([-\d.]+),\s*([-\d.]+)\]', script.string)
+                    # Capture the entire options object
+                    options_match = re.search(r'{\s*"[^}]+":\s*[^}]+(?:,\s*"[^}]+":\s*[^}]+)*}', script.string)
+                    # Capture the entire popup HTML content
+                    popup_match = re.search(r'\$\(`<div[^>]*>(.*?)</div>`\)', script.string, re.DOTALL)
+                    
+                    if coords_match and options_match:
+                        markers.append({
+                            'lat': float(coords_match.group(1)),
+                            'lng': float(coords_match.group(2)),
+                            'options': options_match.group(0),  # Use the full options object
+                            'popup': popup_match.group(1).strip() if popup_match else ''
+                        })
             
-            # Extract the initialization scripts
-            init_script = soup.find('script', string=lambda t: t and 'L_NO_TOUCH = false;' in t)
-            map_script = soup.find('script', string=lambda t: t and 'var map_' in t)
-            
-            # Get the map ID from the script
-            map_id = None
-            if map_script and 'var map_' in map_script.string:
-                map_id = map_script.string.split('var map_')[1].split('=')[0].strip()
-                print(f"Found map ID: {map_id}")
-            
-            # Combine scripts
-            combined_script = ""
-            if init_script:
-                combined_script += init_script.string + "\n"
-            if map_script:
-                combined_script += map_script.string
-            
-            # Create div with correct ID
-            map_div = f"<div id='map_{map_id}' style='height: 80vh;'></div>" if map_id else "<div id='map'></div>"
+            print(f"Extracted {len(markers)} markers")  # Debug info
             
             return render_template('map.html', 
-                                map_div=map_div,
-                                map_script=combined_script,
-                                css_links=css_links,
-                                head_scripts=head_scripts)
+                                map=m.get_root().render(),
+                                markers=markers)
                 
     except Exception as e:
         print(f"Error processing map file: {e}")
+        traceback.print_exc()  # Print full stack trace
         return render_template('map.html', 
-                             map_div="<div id='map'></div>",
-                             map_script="",
-                             css_links=[],
-                             head_scripts=[])
+                             map=m.get_root().render(),
+                             markers=[])
 
 @app.route('/temporal')
 def temporal_view():
